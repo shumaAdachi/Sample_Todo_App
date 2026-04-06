@@ -13,7 +13,7 @@ struct AddTodoView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("基本情報")) {
+                Section(header: Text("情報")) {
                     TextField("タイトルを入力", text: $タイトル)
                     DatePicker("日付", selection: $日付, displayedComponents: .date)
                 }
