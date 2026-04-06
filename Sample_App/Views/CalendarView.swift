@@ -46,8 +46,11 @@ struct CalendarView: View {
                         Image(systemName: "chevron.left").font(.title2)
                     }
                     Spacer()
-                    Text("\(calendar.component(.year, from: 表示月))年 \(calendar.component(.month, from: 表示月))月")
+                    
+                    // 年月の表示（エラー回避のための確実な書き方）
+                    Text(String(calendar.component(.year, from: 表示月)) + "年 " + String(calendar.component(.month, from: 表示月)) + "月")
                         .font(.headline)
+                    
                     Spacer()
                     Button(action: { 月移動(1) }) {
                         Image(systemName: "chevron.right").font(.title2)
@@ -55,7 +58,7 @@ struct CalendarView: View {
                 }
                 .padding()
 
-                // 曜日
+                // 曜日ヘッダー
                 HStack {
                     ForEach(曜日, id: \.self) { day in
                         Text(day).frame(maxWidth: .infinity).font(.caption).foregroundColor(.secondary)
@@ -91,7 +94,6 @@ struct CalendarView: View {
 
                 // 予定リスト
                 List {
-                    // 選択された日付に一致するTodoのインデックスを取得
                     let 表示対象のIndex = todos.indices.filter {
                         calendar.isDate(todos[$0].日付, inSameDayAs: 選択日)
                     }
@@ -102,18 +104,35 @@ struct CalendarView: View {
                             .listRowBackground(Color.clear)
                     } else {
                         ForEach(表示対象のIndex, id: \.self) { index in
-                            // 詳細画面へのリンク
                             NavigationLink(destination: TodoDetailView(todo: $todos[index])) {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
+                                        
+                                        // --- 期限切れ判定ロジック ---
+                                        let todoDate = calendar.startOfDay(for: todos[index].日付)
+                                        let today = calendar.startOfDay(for: Date())
+                                        
+                                        let todoTime = calendar.dateComponents([.hour, .minute], from: todos[index].終了時間)
+                                        let nowTime = calendar.dateComponents([.hour, .minute], from: Date())
+                                        
+                                        // 「今日より前の日」か「今日かつ時間が過ぎている」か
+                                        let isPastTime = (nowTime.hour! > todoTime.hour!) || (nowTime.hour! == todoTime.hour! && nowTime.minute! > todoTime.minute!)
+                                        let isOverdue = (todoDate < today || (todoDate == today && isPastTime)) && !todos[index].完了
+                                        
+                                        // タイトル（期限切れなら赤、完了済みなら黒）
                                         Text(todos[index].タイトル)
                                             .font(.headline)
-                                        // 時間を表示 (14:00 〜 15:00 のような形式)
+                                            .foregroundColor(isOverdue ? .red : .primary)
+                                        
+                                        // 時間表示（期限切れなら赤、完了済みならグレー）
                                         Text("\(todos[index].開始時間, style: .time) 〜 \(todos[index].終了時間, style: .time)")
                                             .font(.caption)
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(isOverdue ? .red : .secondary)
+                                            .fontWeight(isOverdue ? .bold : .regular)
                                     }
+                                    
                                     Spacer()
+                                    
                                     if todos[index].完了 {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundColor(.green)
@@ -122,7 +141,6 @@ struct CalendarView: View {
                             }
                         }
                         .onDelete { offsets in
-                            // スワイプ削除機能
                             offsets.forEach { index in
                                 let targetId = todos[表示対象のIndex[index]].id
                                 todos.removeAll { $0.id == targetId }
