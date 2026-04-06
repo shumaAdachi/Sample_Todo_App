@@ -38,7 +38,7 @@ struct TodoListView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button("カレンダー") { 表示カレンダー画面 = true }
-                    Button("追加しますよ") { 表示追加画面 = true }
+                    Button("追加") { 表示追加画面 = true }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     EditButton()
