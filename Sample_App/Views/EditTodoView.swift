@@ -9,6 +9,6 @@ struct EditTodoView: View {
             DatePicker("日付を編集", selection: $todo.日付, displayedComponents: .date)
             Toggle("完了", isOn: $todo.完了)
         }
-        .navigationTitle("Todo編集")
+        .navigationTitle("編集")
     }
 }
