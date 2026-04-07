@@ -1,8 +1,19 @@
-//
-//  DayPickerView.swift
-//  Sample_App
-//
-//  Created by 安達秀馬 on 2026/04/07.
-//
+import SwiftUI
 
-import Foundation
+struct DayPickerView: View {
+    @Binding var selectedDate: Date
+    var days: [Int]
+    var onSelect: (Int) -> Void
+    @Environment(\.dismiss) var 閉じる
+
+    var body: some View {
+        List {
+            ForEach(days, id: \.self) { day in
+                Button("\(day)日") {
+                    onSelect(day)
+                    閉じる()
+                }
+            }
+        }
+    }
+}

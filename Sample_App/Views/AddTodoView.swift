@@ -1,57 +1,110 @@
 import SwiftUI
 
 struct AddTodoView: View {
-    @Binding var todos: [Todo]
-    @Environment(\.dismiss) var 閉じる
-
+    let db: DBHelper
+    var onSave: () -> Void
+    @Environment(\.dismiss) var dismiss
+    
     @State private var タイトル = ""
-    @State private var 備考 = "" // 追加
-    @State private var 開始時間 = Date() // 追加
-    @State private var 終了時間 = Date().addingTimeInterval(3600) // 1時間後を初期値に
-    @State private var 日付 = Date()
+    @State private var 備考 = ""
+    @State private var 選択ジャンル = "仕事"
+    @State private var 選択月 = 1
+    @State private var 選択日 = 1
+    @State private var 開始時間 = Date()
+    @State private var 終了時間 = Date()
+    
+    @State private var months: [(id: Int, name: String)] = []
+    @State private var days: [Int] = []
+    @State private var genreList: [String] = []
+
+    // 1. アラートを表示するかどうかを管理する変数
+    @State private var showAlert = false
 
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("基本情報")) {
-                    TextField("タイトルを入力", text: $タイトル)
-                    DatePicker("日付", selection: $日付, displayedComponents: .date)
+                TextField("タイトル", text: $タイトル)
+                Picker("ジャンル", selection: $選択ジャンル) {
+                    ForEach(genreList, id: \.self) { g in Text(g) }
                 }
-
-                Section(header: Text("時間設定")) {
-                    // displayedComponentsに .hourAndMinute を指定
-                    DatePicker("開始時間", selection: $開始時間, displayedComponents: .hourAndMinute)
-                    DatePicker("終了時間", selection: $終了時間, displayedComponents: .hourAndMinute)
+                Section(header: Text("日付")) {
+                    Picker("月", selection: $選択月) {
+                        ForEach(months, id: \.id) { m in Text(m.name).tag(m.id) }
+                    }.onChange(of: 選択月) { _ in updateDays() }
+                    Picker("日", selection: $選択日) {
+                        ForEach(days, id: \.self) { d in Text("\(d)日").tag(d) }
+                    }
                 }
-
-                Section(header: Text("メモ")) {
-                    // TextEditorを使うと複数行の入力がしやすくなります
-                    TextEditor(text: $備考)
-                        .frame(minHeight: 100) // 備考欄っぽく高さを確保
+                Section(header: Text("時間")) {
+                    DatePicker("開始", selection: $開始時間, displayedComponents: .hourAndMinute)
+                    DatePicker("終了", selection: $終了時間, displayedComponents: .hourAndMinute)
                 }
+                TextField("備考", text: $備考)
             }
-            .navigationTitle("Todo追加")
+            .navigationTitle("予定の追加")
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        // TODO: Todo構造体に 備考, 開始時間, 終了時間 を追加してください
+                        // 2. タイトルが空（またはスペースのみ）の場合
+                        if タイトル.trimmingCharacters(in: .whitespaces).isEmpty {
+                            showAlert = true // アラートを表示
+                            return           // ここで処理を中断
+                        }
+
                         let newTodo = Todo(
                             タイトル: タイトル,
-                            日付: 日付,
+                            日付: createDate(),
                             備考: 備考,
                             開始時間: 開始時間,
                             終了時間: 終了時間,
-                            完了: false
+                            完了: false,
+                            ジャンル: 選択ジャンル
                         )
-                        todos.append(newTodo)
-                        閉じる()
+
+                        db.insertTodo(newTodo)
+                        onSave()
+                        dismiss()
                     }
-                    .disabled(タイトル.isEmpty) // タイトル未入力なら保存不可にする工夫
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") { 閉じる() }
                 }
             }
+            // 3. アラートの中身を定義
+            .alert("入力エラー", isPresented: $showAlert) {
+                Button("OK") { }
+            } message: {
+                Text("タイトルは必須項目です。")
+            }
+            .onAppear {
+                months = db.fetchMonths()
+                if let first = months.first { 選択月 = first.id }
+                genreList = db.fetchGenres()
+                選択ジャンル = genreList.first ?? "仕事"
+                updateDays()
+            }
         }
+    }
+
+    private func updateDays() {
+        let regDays = db.fetchDays(forMonth: 選択月)
+        if !regDays.isEmpty { days = regDays }
+        else {
+            let cal = Calendar.current
+            var comps = DateComponents()
+            comps.year = cal.component(.year, from: Date())
+            comps.month = 選択月
+            if let date = cal.date(from: comps), let range = cal.range(of: .day, in: .month, for: date) {
+                days = Array(range)
+            } else { days = [1] }
+        }
+        if !days.contains(選択日) { 選択日 = days.first ?? 1 }
+    }
+
+    private func createDate() -> Date {
+        var comps = DateComponents()
+        comps.year = Calendar.current.component(.year, from: Date())
+        comps.month = 選択月; comps.day = 選択日
+        return Calendar.current.date(from: comps) ?? Date()
     }
 }

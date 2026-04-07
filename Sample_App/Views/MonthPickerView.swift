@@ -1,8 +1,17 @@
-//
-//  MonthPickerView.swift
-//  Sample_App
-//
-//  Created by 安達秀馬 on 2026/04/07.
-//
+import SwiftUI
 
-import Foundation
+struct MonthPickerView: View {
+    var months: [(id: Int, name: String)]
+    var onSelect: (Int) -> Void
+
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        List(months, id: \.id) { month in
+            Button(month.name) {
+                onSelect(month.id)
+                dismiss()
+            }
+        }
+    }
+}
